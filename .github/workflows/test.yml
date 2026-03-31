@@ -16,7 +16,7 @@ jobs:
         id: branch-check
         uses: ./
         with:
-          branch_pattern: 'feature|bug|chore|hotfix'
+          branch_pattern: 'feature|bug|chore|hotfix|cicd'
           fail_if_invalid_branch_name: 'false'
           invalid_label: 'invalid-branch-name'
           skip_dependabot: 'true'
