@@ -7,11 +7,18 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  build-and-commit:
-    name: Build dist and commit
+  # Builds dist, commits it if changed, then runs release-please.
+  # Keeping these sequential ensures the tag release-please creates
+  # always includes the latest built dist.
+  release:
+    name: Build, test, and release
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      major: ${{ steps.release-please.outputs.major }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,8 +44,32 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add dist/
           if git diff --cached --quiet; then
-            echo "No changes to dist, skipping commit"
+            echo "dist is up to date"
           else
             git commit -m "chore: rebuild dist [skip ci]"
             git push
           fi
+
+      - name: Release Please
+        id: release-please
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # After a release is published, force-update the floating major version tag
+  # (e.g. v1 → v1.2.3) so users pinned to @v1 get the latest automatically.
+  update-major-tag:
+    name: Update major version tag
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.outputs.release_created == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Point v${{ needs.release.outputs.major }} at the new release
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -fa "v${{ needs.release.outputs.major }}" -m "chore: update v${{ needs.release.outputs.major }} tag"
+          git push origin "v${{ needs.release.outputs.major }}" --force
