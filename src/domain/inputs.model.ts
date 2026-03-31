@@ -12,4 +12,5 @@ export interface ActionInputs {
   invalidCommentTemplate: string | null;
   successCommentTemplate: string | null;
   skipCommentTemplate: string | null;
+  commentOnSuccess: boolean;
 }

@@ -41,6 +41,7 @@ A GitHub Action that enforces branch naming conventions on pull requests. When a
 | `invalid_comment_template` | | — | Custom Markdown template for the invalid-branch comment. See [Custom templates](#custom-templates) |
 | `success_comment_template` | | — | Custom Markdown template for the valid-branch comment. See [Custom templates](#custom-templates) |
 | `skip_comment_template` | | — | Custom Markdown template for the skipped-branch comment. See [Custom templates](#custom-templates) |
+| `comment_on_success` | | `true` | Set to `false` to suppress the success comment when the branch is valid. If a previous invalid comment exists it is updated rather than left stale |
 
 ---
 
