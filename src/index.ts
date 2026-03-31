@@ -26,6 +26,7 @@ async function run(): Promise<void> {
       repo,
       prNumber: pullRequest.number,
       branchName: pullRequest.head.ref as string,
+      prTitle: pullRequest.title as string,
       actor: context.actor,
     });
   } catch (error) {

@@ -50,6 +50,8 @@ function mockInputs(overrides: Record<string, string> = {}) {
       fail_if_invalid_branch_name: 'false',
       skip_dependabot: 'true',
       invalid_label: 'invalid-branch-name',
+      check_pr_title: 'false',
+      require_ticket_id: 'false',
     };
     return overrides[name] ?? defaults[name] ?? '';
   });
@@ -60,6 +62,7 @@ const baseCtx: PullRequestContext = {
   repo: 'repo',
   prNumber: 1,
   branchName: 'feature/my-thing',
+  prTitle: 'feat: my thing',
   actor: 'octocat',
 };
 
@@ -291,5 +294,82 @@ describe('checkBranch', () => {
     const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
     expect(body).toContain('release/v1.2.3');
     expect(body).toContain('[!IMPORTANT]');
+  });
+
+  it('fails when branch name is shorter than min_length', async () => {
+    mockInputs({ min_length: '20' });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, { ...baseCtx, branchName: 'feature/short' });
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('[!CAUTION]');
+    expect(core.setFailed).not.toHaveBeenCalled();
+  });
+
+  it('passes when branch name meets min_length', async () => {
+    mockInputs({ min_length: '5' });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, baseCtx);
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('[!TIP]');
+  });
+
+  it('fails when branch name exceeds max_length', async () => {
+    mockInputs({ max_length: '5' });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, baseCtx);
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('[!CAUTION]');
+  });
+
+  it('fails when PR title is invalid and check_pr_title=true', async () => {
+    mockInputs({ check_pr_title: 'true' });
+    const octokit = buildOctokit();
+    // branchName is valid, but prTitle does not match the branch pattern
+    await checkBranch(octokit, { ...baseCtx, prTitle: 'My unrelated PR title' });
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('[!CAUTION]');
+  });
+
+  it('passes when both branch and PR title are valid and check_pr_title=true', async () => {
+    mockInputs({ check_pr_title: 'true', branch_pattern: '^(feature|fix)/.+' });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, { ...baseCtx, prTitle: 'feature/valid-title' });
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('[!TIP]');
+  });
+
+  it('fails when require_ticket_id=true and ticket group is absent', async () => {
+    mockInputs({ require_ticket_id: 'true', branch_pattern: '^(feature|fix)/.+' });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, baseCtx);
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('[!CAUTION]');
+  });
+
+  it('passes when require_ticket_id=true and ticket capture group is present', async () => {
+    mockInputs({
+      require_ticket_id: 'true',
+      branch_pattern: '^(?<type>feature|fix)/(?<ticket>[A-Z]+-\\d+)-.+$',
+    });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, { ...baseCtx, branchName: 'feature/JIRA-42-my-story' });
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('[!TIP]');
+  });
+
+  it('uses a custom invalid comment template when provided', async () => {
+    mockInputs({ invalid_comment_template: '<!-- branch-name-validation -->CUSTOM_INVALID<!-- end-branch-name-validation -->' });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, { ...baseCtx, branchName: 'bad-branch' });
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('CUSTOM_INVALID');
+  });
+
+  it('uses a custom success comment template when provided', async () => {
+    mockInputs({ success_comment_template: '<!-- branch-name-validation -->CUSTOM_SUCCESS<!-- end-branch-name-validation -->' });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, baseCtx);
+    const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
+    expect(body).toContain('CUSTOM_SUCCESS');
   });
 });

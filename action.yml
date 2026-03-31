@@ -28,6 +28,29 @@ inputs:
     description: 'Set to "false" to also check Dependabot branches (default: "true" — Dependabot branches are skipped)'
     required: false
     default: 'true'
+  min_length:
+    description: 'Minimum character length for the branch name. Leave empty to disable.'
+    required: false
+  max_length:
+    description: 'Maximum character length for the branch name. Leave empty to disable.'
+    required: false
+  check_pr_title:
+    description: 'Set to "true" to also validate the PR title using the same branch_pattern.'
+    required: false
+    default: 'false'
+  require_ticket_id:
+    description: 'Set to "true" to require a non-empty named capture group "ticket" in the branch_pattern (and PR title, if check_pr_title is enabled).'
+    required: false
+    default: 'false'
+  invalid_comment_template:
+    description: 'Custom Markdown template for the invalid-branch comment. Supports {{branch_name}}, {{branch_pattern}}, {{suggestion}}, {{validation_reasons}}, {{pr_author}}, {{pr_number}}, {{pr_title}}, and any named capture groups.'
+    required: false
+  success_comment_template:
+    description: 'Custom Markdown template for the valid-branch comment. Supports the same variables as invalid_comment_template.'
+    required: false
+  skip_comment_template:
+    description: 'Custom Markdown template for the skipped-branch comment. Supports the same variables as invalid_comment_template.'
+    required: false
 
 runs:
   using: node24

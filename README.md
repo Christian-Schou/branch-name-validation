@@ -9,10 +9,14 @@ A GitHub Action that enforces branch naming conventions on pull requests. When a
 ## Features
 
 - **Colour-coded PR comments** — red (`[!CAUTION]`) for invalid, green (`[!TIP]`) for valid, purple (`[!IMPORTANT]`) for skipped; updated in-place on every push
-- **Branch name suggestion** — automatically derives a corrected branch name and includes it in the invalid comment
+- **Branch name suggestion** — automatically derives a corrected branch name and includes git rename instructions in the invalid comment
 - **Label management** — adds a configurable label when invalid, removes it when the branch becomes valid
 - **PR review blocking** — optionally submits a `REQUEST_CHANGES` review to block merging and dismisses it when the branch is fixed
 - **Named capture group outputs** — expose values like `branch_type` and `ticket_id` from your pattern to downstream steps
+- **Ticket ID enforcement** — optionally require a non-empty `ticket` capture group via `require_ticket_id`
+- **PR title validation** — optionally validate the PR title against the same pattern via `check_pr_title`
+- **Length constraints** — optionally enforce a minimum and/or maximum branch name length via `min_length` / `max_length`
+- **Custom comment templates** — override any of the three comment templates with your own Markdown
 - **Multiple ignore patterns** — skip branches matching comma- or newline-separated patterns
 - **Dependabot skip** — Dependabot branches are skipped by default
 - **Job summary** — writes a summary table to the GitHub Actions job summary page
@@ -23,12 +27,20 @@ A GitHub Action that enforces branch naming conventions on pull requests. When a
 
 | Input | Required | Default | Description |
 |---|---|---|---|
+| `github_token` | | `${{ github.token }}` | GitHub token used to call the API. The built-in token is used by default |
 | `branch_pattern` | ✅ | — | Simple prefix list (`feature\|fix\|chore`) or a raw regex starting with `^`. See [Branch pattern](#branch-pattern) below |
 | `fail_if_invalid_branch_name` | | `false` | Set to `true` to fail the action when the branch name is invalid |
 | `ignore_branch_pattern` | | — | Regex patterns for branches to skip entirely. Accepts one pattern or multiple separated by commas or newlines |
 | `invalid_label` | | `invalid-branch-name` | Label applied to the PR when invalid and removed when valid. Set to an empty string to disable |
 | `skip_dependabot` | | `true` | Set to `false` to also check Dependabot branches |
 | `use_pr_review` | | `false` | Set to `true` to submit a blocking `REQUEST_CHANGES` review when invalid and approve/dismiss it when valid |
+| `min_length` | | — | Minimum character length for the branch name. Leave empty to disable |
+| `max_length` | | — | Maximum character length for the branch name. Leave empty to disable |
+| `check_pr_title` | | `false` | Set to `true` to also validate the PR title using the same `branch_pattern` |
+| `require_ticket_id` | | `false` | Set to `true` to require a non-empty `ticket` named capture group in the pattern |
+| `invalid_comment_template` | | — | Custom Markdown template for the invalid-branch comment. See [Custom templates](#custom-templates) |
+| `success_comment_template` | | — | Custom Markdown template for the valid-branch comment. See [Custom templates](#custom-templates) |
+| `skip_comment_template` | | — | Custom Markdown template for the skipped-branch comment. See [Custom templates](#custom-templates) |
 
 ---
 
@@ -81,7 +93,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Check branch name
-        uses: twc/branch-name-validation@v1
+        uses: Christian-Schou/branch-name-validation@v1.1.0
         with:
           branch_pattern: 'feature|fix|chore|docs'
 ```
@@ -90,7 +102,7 @@ jobs:
 
 ```yaml
 - name: Check branch name
-  uses: twc/branch-name-validation@v3
+  uses: Christian-Schou/branch-name-validation@v1.1.0
   with:
     branch_pattern: 'feature|fix|chore'
     use_pr_review: 'true'
@@ -118,9 +130,10 @@ jobs:
     steps:
       - name: Check branch name
         id: branch-check
-        uses: twc/branch-name-validation@v1
+        uses: Christian-Schou/branch-name-validation@v1.1.0
         with:
           branch_pattern: '^(?<type>feature|fix|chore)/(?<ticket>[A-Z]+-\d+)-.+$'
+          require_ticket_id: 'true'
           fail_if_invalid_branch_name: 'true'
 
       - name: Comment on Jira ticket
@@ -140,7 +153,7 @@ Use named capture groups (`?<name>`) in your pattern to extract values and use t
 ```yaml
 - name: Check branch name
   id: branch-check
-  uses: twc/branch-name-validation@v3
+  uses: Christian-Schou/branch-name-validation@v1.1.0
   with:
     branch_pattern: '^(?<type>feature|fix)/(?<ticket>[A-Z]+-\d+)-.+$'
 
@@ -150,13 +163,36 @@ Use named capture groups (`?<name>`) in your pattern to extract values and use t
     echo "Ticket ID:   ${{ steps.branch-check.outputs.ticket_id }}"
 ```
 
+### Validate the PR title too
+
+Use `check_pr_title: 'true'` to apply the same pattern to the PR title. Both the branch name and the title must be valid for the check to pass:
+
+```yaml
+- name: Check branch name
+  uses: Christian-Schou/branch-name-validation@v1.1.0
+  with:
+    branch_pattern: 'feature|fix|chore'
+    check_pr_title: 'true'
+```
+
+### Length constraints
+
+```yaml
+- name: Check branch name
+  uses: Christian-Schou/branch-name-validation@v1.1.0
+  with:
+    branch_pattern: 'feature|fix|chore'
+    min_length: '10'
+    max_length: '80'
+```
+
 ### Multiple ignore patterns
 
 ```yaml
 - name: Check branch name
-  uses: twc/branch-name-validation@v3
+  uses: Christian-Schou/branch-name-validation@v1.1.0
   with:
-    branch_pattern: '^(feature|fix)/.+'  # raw regex — starts with ^
+    branch_pattern: '^(feature|fix)/.+'
     ignore_branch_pattern: |
       ^release/
       ^hotfix/
@@ -173,9 +209,43 @@ The action posts one comment per PR and updates it in-place on every push. The c
 
 | Outcome | Style | Content |
 |---|---|---|
-| Invalid branch | 🔴 `[!CAUTION]` | Branch name, required pattern, suggested name, `@author` mention |
+| Invalid branch | 🔴 `[!CAUTION]` | Branch name, required pattern, suggested name, git rename instructions, `@author` mention |
 | Valid branch | 🟢 `[!TIP]` | Confirmation message with branch name |
 | Skipped | 🟣 `[!IMPORTANT]` | Branch name and reason for skipping |
+
+### Custom templates
+
+You can override any comment template using the `invalid_comment_template`, `success_comment_template`, or `skip_comment_template` inputs. Templates support the following variables:
+
+| Variable | Description |
+|---|---|
+| `{{branch_name}}` | The current branch name |
+| `{{branch_pattern}}` | The configured pattern |
+| `{{suggestion}}` | Suggested corrected branch name (invalid template only) |
+| `{{validation_reasons}}` | Bullet list of all validation failures (invalid template only) |
+| `{{pr_author}}` | GitHub username of the PR author |
+| `{{pr_number}}` | The PR number |
+| `{{pr_title}}` | The PR title |
+| `{{type}}`, `{{ticket}}`, … | Any named capture groups from `branch_pattern` |
+
+> [!IMPORTANT]
+> Custom templates must include the sentinel comments `<!-- branch-name-validation -->` and `<!-- end-branch-name-validation -->` so the action can find and update the comment on subsequent pushes.
+
+**Example:**
+
+```yaml
+- name: Check branch name
+  uses: Christian-Schou/branch-name-validation@v1.1.0
+  with:
+    branch_pattern: 'feature|fix'
+    invalid_comment_template: |
+      <!-- branch-name-validation -->
+      > [!CAUTION]
+      > ❌ Hey @{{pr_author}}, `{{branch_name}}` doesn't follow our naming rules.
+      >
+      > Please rename it to something like `{{suggestion}}`.
+      <!-- end-branch-name-validation -->
+```
 
 ---
 
