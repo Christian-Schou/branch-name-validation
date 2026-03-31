@@ -1,0 +1,44 @@
+name: Branch name validator
+description: Github action to check branch nomenclature based on configurable patterns.
+
+inputs:
+  branch_pattern:
+    description: 'Branch name filter. Use a simple pipe-separated prefix list (e.g. "feature|fix|chore") and the action will automatically require branches to follow the pattern "prefix/...". For full control, supply a raw regex starting with "^" (e.g. "^(feature|fix)/.+")'
+    required: true
+  use_pr_review:
+    description: 'Set to "true" to submit a blocking "Request changes" PR review when the branch name is invalid, and approve/dismiss it when valid. Works with branch protection "required reviews" rules.'
+    required: false
+    default: 'false'
+  fail_if_invalid_branch_name:
+    description: 'Set to "true" to fail the action when the branch name is invalid'
+    required: false
+    default: 'false'
+  ignore_branch_pattern:
+    description: 'Regex patterns — branches matching any of these are skipped entirely. Accepts a single regex or multiple patterns separated by commas or newlines.'
+    required: false
+  invalid_label:
+    description: 'Label applied to the PR when the branch name is invalid and removed when it becomes valid. Set to an empty string to disable label management.'
+    required: false
+    default: 'invalid-branch-name'
+  skip_dependabot:
+    description: 'Set to "false" to also check Dependabot branches (default: "true" — Dependabot branches are skipped)'
+    required: false
+    default: 'true'
+
+runs:
+  using: node24
+  main: 'dist/index.cjs'
+
+outputs:
+  is_valid:
+    description: '"true" if the branch name matches the required pattern, "false" otherwise'
+  was_skipped:
+    description: '"true" if the branch check was skipped (Dependabot or ignore_branch_pattern match)'
+  branch_type:
+    description: 'Value of the named capture group "type" in branch_pattern (empty string if not captured)'
+  ticket_id:
+    description: 'Value of the named capture group "ticket" in branch_pattern (empty string if not captured)'
+
+branding:
+  icon: git-branch
+  color: green

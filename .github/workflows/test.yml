@@ -1,0 +1,29 @@
+name: 🛠️ Test Branch Name Validator
+on:
+  pull_request:
+
+jobs:
+  test-branch-name:
+    runs-on: ubuntu-latest
+    name: 🏃 Run the action
+    permissions:
+      pull-requests: write
+    steps:
+      - name: 📥 Checkout the code
+        uses: actions/checkout@v4
+
+      - name: 🧪 Test the action
+        id: branch-check
+        uses: ./
+        with:
+          branch_pattern: 'feature|bug|chore|hotfix'
+          fail_if_invalid_branch_name: 'false'
+          invalid_label: 'invalid-branch-name'
+          skip_dependabot: 'true'
+
+      - name: 📋 Print outputs
+        run: |
+          echo "is_valid:    ${{ steps.branch-check.outputs.is_valid }}"
+          echo "was_skipped: ${{ steps.branch-check.outputs.was_skipped }}"
+          echo "branch_type: ${{ steps.branch-check.outputs.branch_type }}"
+          echo "ticket_id:   ${{ steps.branch-check.outputs.ticket_id }}"
