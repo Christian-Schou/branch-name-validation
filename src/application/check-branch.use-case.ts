@@ -25,6 +25,7 @@ export interface PullRequestContext {
   repo: string;
   prNumber: number;
   branchName: string;
+  prTitle: string;
   actor: string;
 }
 
@@ -68,16 +69,65 @@ function writeSummary(branchName: string, branchPattern: string, result: string,
     .catch(() => { /* summary API may not be available in all environments */ });
 }
 
+interface ValidationResult {
+  valid: boolean;
+  reasons: string[];
+  captureGroups: Record<string, string>;
+}
+
+function validateBranch(
+  branchName: string,
+  branchPattern: string,
+  minLength: number | null,
+  maxLength: number | null,
+  requireTicketId: boolean,
+): ValidationResult {
+  const reasons: string[] = [];
+
+  const match = new RegExp(branchPattern).exec(branchName);
+  const captureGroups = (match?.groups ?? {}) as Record<string, string>;
+
+  if (!match) {
+    reasons.push(`does not match pattern \`${branchPattern}\``);
+  }
+
+  if (minLength !== null && branchName.length < minLength) {
+    reasons.push(`is shorter than the minimum length of ${minLength} characters`);
+  }
+
+  if (maxLength !== null && branchName.length > maxLength) {
+    reasons.push(`exceeds the maximum length of ${maxLength} characters`);
+  }
+
+  if (requireTicketId && !captureGroups.ticket) {
+    reasons.push('is missing a ticket ID (named capture group `ticket` not found)');
+  }
+
+  return { valid: reasons.length === 0, reasons, captureGroups };
+}
+
 export async function checkBranch(octokit: Octokit, ctx: PullRequestContext): Promise<void> {
   const inputs = parseInputs();
   const {
-    owner, repo, prNumber, branchName, actor,
+    owner, repo, prNumber, branchName, prTitle, actor,
   } = ctx;
+
+  const invalidTemplate = inputs.invalidCommentTemplate ?? DEFAULT_INVALID_COMMENT_TEMPLATE;
+  const successTemplate = inputs.successCommentTemplate ?? DEFAULT_SUCCESS_COMMENT_TEMPLATE;
+  const skipTemplate = inputs.skipCommentTemplate ?? DEFAULT_SKIP_COMMENT_TEMPLATE;
 
   core.info(`🔍 Checking branch: ${branchName}`);
 
   const previousComment = await findBotComment(octokit, owner, repo, prNumber);
   const previousReview = inputs.usePrReview ? await findBotReview(octokit, owner, repo, prNumber) : undefined;
+
+  const templateVars = {
+    branch_name: branchName,
+    branch_pattern: inputs.branchPattern,
+    pr_number: String(prNumber),
+    pr_author: actor,
+    pr_title: prTitle,
+  };
 
   // --- Dependabot skip ---
   const isDependabot = inputs.skipDependabot && (actor === 'dependabot[bot]' || branchName.startsWith('dependabot/'));
@@ -87,13 +137,7 @@ export async function checkBranch(octokit: Octokit, ctx: PullRequestContext): Pr
     setOutputs({ isValid: false, wasSkipped: true, captureGroups: {} });
     writeSummary(branchName, inputs.branchPattern, '⏭️ Skipped', 'Dependabot branch');
     if (inputs.invalidLabel) await removeLabel(octokit, owner, repo, prNumber, inputs.invalidLabel);
-    const skipBody = renderTemplate(DEFAULT_SKIP_COMMENT_TEMPLATE, {
-      branch_name: branchName,
-      branch_pattern: inputs.branchPattern,
-      pr_number: String(prNumber),
-      pr_author: actor,
-    });
-    await postOrUpdate(octokit, owner, repo, prNumber, skipBody, previousComment);
+    await postOrUpdate(octokit, owner, repo, prNumber, renderTemplate(skipTemplate, templateVars), previousComment);
     return;
   }
 
@@ -104,33 +148,39 @@ export async function checkBranch(octokit: Octokit, ctx: PullRequestContext): Pr
     setOutputs({ isValid: false, wasSkipped: true, captureGroups: {} });
     writeSummary(branchName, inputs.branchPattern, '⏭️ Skipped', 'Matches ignore pattern');
     if (inputs.invalidLabel) await removeLabel(octokit, owner, repo, prNumber, inputs.invalidLabel);
-    const skipBody = renderTemplate(DEFAULT_SKIP_COMMENT_TEMPLATE, {
-      branch_name: branchName,
-      branch_pattern: inputs.branchPattern,
-      pr_number: String(prNumber),
-      pr_author: actor,
-    });
-    await postOrUpdate(octokit, owner, repo, prNumber, skipBody, previousComment);
+    await postOrUpdate(octokit, owner, repo, prNumber, renderTemplate(skipTemplate, templateVars), previousComment);
     return;
   }
 
-  // --- Branch pattern validation ---
-  const match = new RegExp(inputs.branchPattern).exec(branchName);
-  const captureGroups = (match?.groups ?? {}) as Record<string, string>;
+  // --- Branch name validation ---
+  const branchResult = validateBranch(
+    branchName,
+    inputs.branchPattern,
+    inputs.minLength,
+    inputs.maxLength,
+    inputs.requireTicketId,
+  );
 
-  if (match) {
+  // --- PR title validation (uses same pattern) ---
+  const titleResult = inputs.checkPrTitle
+    ? validateBranch(prTitle, inputs.branchPattern, inputs.minLength, inputs.maxLength, inputs.requireTicketId)
+    : null;
+
+  const allValid = branchResult.valid && (titleResult === null || titleResult.valid);
+  const allReasons = [
+    ...branchResult.reasons.map((r) => `Branch ${r}`),
+    ...(titleResult ? titleResult.reasons.map((r) => `PR title ${r}`) : []),
+  ];
+
+  if (allValid) {
     core.info('✅ Branch name is valid');
-    setOutputs({ isValid: true, wasSkipped: false, captureGroups });
+    setOutputs({ isValid: true, wasSkipped: false, captureGroups: branchResult.captureGroups });
     writeSummary(branchName, inputs.branchPattern, '✅ Valid');
     if (inputs.invalidLabel) await removeLabel(octokit, owner, repo, prNumber, inputs.invalidLabel);
-    const successBody = renderTemplate(DEFAULT_SUCCESS_COMMENT_TEMPLATE, {
-      branch_name: branchName,
-      branch_pattern: inputs.branchPattern,
-      pr_number: String(prNumber),
-      pr_author: actor,
-      ...captureGroups,
-    });
-    await postOrUpdate(octokit, owner, repo, prNumber, successBody, previousComment);
+    await postOrUpdate(octokit, owner, repo, prNumber, renderTemplate(successTemplate, {
+      ...templateVars,
+      ...branchResult.captureGroups,
+    }), previousComment);
     if (inputs.usePrReview) {
       if (previousReview) {
         await dismissReview(octokit, owner, repo, prNumber, previousReview.id);
@@ -141,21 +191,18 @@ export async function checkBranch(octokit: Octokit, ctx: PullRequestContext): Pr
     return;
   }
 
-  // --- Invalid branch ---
+  // --- Invalid ---
   core.info('🚨 Branch name is invalid');
   setOutputs({ isValid: false, wasSkipped: false, captureGroups: {} });
-  writeSummary(branchName, inputs.branchPattern, '❌ Invalid');
+  writeSummary(branchName, inputs.branchPattern, '❌ Invalid', allReasons.join('; '));
   if (inputs.invalidLabel) await addLabel(octokit, owner, repo, prNumber, inputs.invalidLabel);
 
-  const body = renderTemplate(DEFAULT_INVALID_COMMENT_TEMPLATE, {
-    branch_name: branchName,
-    branch_pattern: inputs.branchPattern,
-    pr_number: String(prNumber),
-    pr_author: actor,
+  await postOrUpdate(octokit, owner, repo, prNumber, renderTemplate(invalidTemplate, {
+    ...templateVars,
     suggestion: suggestBranchName(branchName, inputs.branchPattern),
-  });
+    validation_reasons: allReasons.map((r) => `- ${r}`).join('\n'),
+  }), previousComment);
 
-  await postOrUpdate(octokit, owner, repo, prNumber, body, previousComment);
   if (inputs.usePrReview && !previousReview) {
     await submitRequestChangesReview(octokit, owner, repo, prNumber);
   }
