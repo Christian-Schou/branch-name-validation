@@ -95,6 +95,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 > **Suggested name:** \`{{suggestion}}\`
 >
 > Please rename your branch before merging.
+
+**To rename your branch, run:**
+\`\`\`sh
+git branch -m {{branch_name}} {{suggestion}}
+git push origin {{suggestion}}
+git push origin --delete {{branch_name}}
+\`\`\`
 ${ni}`,CR=`${Jt}
 > [!TIP]
 > ## \u2705 Branch name valid

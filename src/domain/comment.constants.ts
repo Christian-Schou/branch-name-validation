@@ -12,6 +12,13 @@ export const DEFAULT_INVALID_COMMENT_TEMPLATE = `${COMMENT_SENTINEL}
 > **Suggested name:** \`{{suggestion}}\`
 >
 > Please rename your branch before merging.
+
+**To rename your branch, run:**
+\`\`\`sh
+git branch -m {{branch_name}} {{suggestion}}
+git push origin {{suggestion}}
+git push origin --delete {{branch_name}}
+\`\`\`
 ${COMMENT_SENTINEL_END}`;
 
 export const DEFAULT_SUCCESS_COMMENT_TEMPLATE = `${COMMENT_SENTINEL}

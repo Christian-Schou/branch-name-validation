@@ -2,7 +2,7 @@
 
 A GitHub Action that enforces branch naming conventions on pull requests. When a branch doesn't match your pattern the action posts a colour-coded PR comment, applies a label, optionally blocks merging via a PR review, and writes a job summary — all updated in-place on every push.
 
-![Static Badge](https://img.shields.io/badge/PRs-welcome-orange) ![Static Badge](https://img.shields.io/badge/License-MIT-pink) ![Static Badge](https://img.shields.io/badge/Node-20-green) ![GitHub Repo stars](https://img.shields.io/github/stars/Christian-Schou/branch-name-validation)
+![Static Badge](https://img.shields.io/badge/PRs-welcome-orange) ![Static Badge](https://img.shields.io/badge/License-MIT-pink) ![Static Badge](https://img.shields.io/badge/Node-24-green) ![GitHub Repo stars](https://img.shields.io/github/stars/Christian-Schou/branch-name-validation)
 
 ---
 
