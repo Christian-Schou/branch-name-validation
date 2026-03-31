@@ -1,5 +1,5 @@
 name: Branch name validator
-description: Github action to check branch nomenclature based on configurable patterns.
+description: A GitHub Action that enforces branch naming conventions on pull requests.
 
 inputs:
   github_token:
