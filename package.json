@@ -1,6 +1,6 @@
 {
   "name": "@twc/branch-name-validation",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "A GitHub Action that enforces branch naming conventions on pull requests, with support for configurable regex patterns, Dependabot branch skipping, and optional PR review integration.",
   "author": "Christian Schou Køster",
   "license": "MIT",
