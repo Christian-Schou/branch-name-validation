@@ -27,6 +27,7 @@ export default function parseInputs(): ActionInputs {
     invalid_comment_template: core.getInput('invalid_comment_template') || undefined,
     success_comment_template: core.getInput('success_comment_template') || undefined,
     skip_comment_template: core.getInput('skip_comment_template') || undefined,
+    comment_on_success: core.getInput('comment_on_success') || 'true',
   };
 
   const result = inputsSchema.safeParse(raw);
@@ -54,5 +55,6 @@ export default function parseInputs(): ActionInputs {
     invalidCommentTemplate: data.invalid_comment_template ?? null,
     successCommentTemplate: data.success_comment_template ?? null,
     skipCommentTemplate: data.skip_comment_template ?? null,
+    commentOnSuccess: data.comment_on_success === 'true',
   };
 }

@@ -30,6 +30,9 @@ export const inputsSchema = z.object({
   invalid_comment_template: z.string().optional(),
   success_comment_template: z.string().optional(),
   skip_comment_template: z.string().optional(),
+  comment_on_success: z
+    .enum(['true', 'false'])
+    .default('true'),
 });
 
 export type RawInputs = z.input<typeof inputsSchema>;

@@ -177,10 +177,19 @@ export async function checkBranch(octokit: Octokit, ctx: PullRequestContext): Pr
     setOutputs({ isValid: true, wasSkipped: false, captureGroups: branchResult.captureGroups });
     writeSummary(branchName, inputs.branchPattern, '✅ Valid');
     if (inputs.invalidLabel) await removeLabel(octokit, owner, repo, prNumber, inputs.invalidLabel);
-    await postOrUpdate(octokit, owner, repo, prNumber, renderTemplate(successTemplate, {
-      ...templateVars,
-      ...branchResult.captureGroups,
-    }), previousComment);
+    if (inputs.commentOnSuccess) {
+      await postOrUpdate(octokit, owner, repo, prNumber, renderTemplate(successTemplate, {
+        ...templateVars,
+        ...branchResult.captureGroups,
+      }), previousComment);
+    } else if (previousComment) {
+      // Branch was previously invalid — delete the stale comment now that it's valid
+      await updateComment(octokit, owner, repo, previousComment.id, renderTemplate(successTemplate, {
+        ...templateVars,
+        ...branchResult.captureGroups,
+      }));
+      core.info('✏️  Updated previous comment to success (comment_on_success=false suppresses new comments)');
+    }
     if (inputs.usePrReview) {
       if (previousReview) {
         await dismissReview(octokit, owner, repo, prNumber, previousReview.id);

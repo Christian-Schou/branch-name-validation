@@ -372,4 +372,27 @@ describe('checkBranch', () => {
     const body = vi.mocked(octokit.rest.issues.createComment).mock.calls[0]![0]!.body as string;
     expect(body).toContain('CUSTOM_SUCCESS');
   });
+
+  it('does not post a success comment when comment_on_success=false and no previous comment', async () => {
+    mockInputs({ comment_on_success: 'false' });
+    const octokit = buildOctokit();
+    await checkBranch(octokit, baseCtx);
+    expect(octokit.rest.issues.createComment).not.toHaveBeenCalled();
+    expect(octokit.rest.issues.updateComment).not.toHaveBeenCalled();
+  });
+
+  it('updates the previous comment when comment_on_success=false and a previous comment exists', async () => {
+    mockInputs({ comment_on_success: 'false' });
+    const previousComment = {
+      id: 77,
+      user: { login: 'github-actions[bot]' },
+      body: `${COMMENT_SENTINEL}\nold invalid content`,
+    };
+    const octokit = buildOctokit([previousComment]);
+    await checkBranch(octokit, baseCtx);
+    expect(octokit.rest.issues.createComment).not.toHaveBeenCalled();
+    expect(octokit.rest.issues.updateComment).toHaveBeenCalledWith(
+      expect.objectContaining({ comment_id: 77 }),
+    );
+  });
 });
