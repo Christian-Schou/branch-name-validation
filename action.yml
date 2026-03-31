@@ -2,6 +2,10 @@ name: Branch name validator
 description: Github action to check branch nomenclature based on configurable patterns.
 
 inputs:
+  github_token:
+    description: 'GitHub token used to call the API. Defaults to the built-in GITHUB_TOKEN.'
+    required: false
+    default: '${{ github.token }}'
   branch_pattern:
     description: 'Branch name filter. Use a simple pipe-separated prefix list (e.g. "feature|fix|chore") and the action will automatically require branches to follow the pattern "prefix/...". For full control, supply a raw regex starting with "^" (e.g. "^(feature|fix)/.+")'
     required: true

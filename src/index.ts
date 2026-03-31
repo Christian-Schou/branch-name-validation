@@ -4,9 +4,9 @@ import { checkBranch } from './application/check-branch.use-case';
 
 async function run(): Promise<void> {
   try {
-    const token = process.env.GITHUB_TOKEN;
+    const token = core.getInput('github_token');
     if (!token) {
-      core.setFailed('❌ GITHUB_TOKEN is not set');
+      core.setFailed('❌ github_token is not set');
       return;
     }
 
