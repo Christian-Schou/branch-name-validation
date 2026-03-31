@@ -94,7 +94,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Check branch name
-        uses: Christian-Schou/branch-name-validation@v1.1.0
+        uses: Christian-Schou/branch-name-validation@v1
         with:
           branch_pattern: 'feature|fix|chore|docs'
 ```
@@ -103,7 +103,7 @@ jobs:
 
 ```yaml
 - name: Check branch name
-  uses: Christian-Schou/branch-name-validation@v1.1.0
+  uses: Christian-Schou/branch-name-validation@v1
   with:
     branch_pattern: 'feature|fix|chore'
     use_pr_review: 'true'
@@ -131,7 +131,7 @@ jobs:
     steps:
       - name: Check branch name
         id: branch-check
-        uses: Christian-Schou/branch-name-validation@v1.1.0
+        uses: Christian-Schou/branch-name-validation@v1
         with:
           branch_pattern: '^(?<type>feature|fix|chore)/(?<ticket>[A-Z]+-\d+)-.+$'
           require_ticket_id: 'true'
@@ -154,7 +154,7 @@ Use named capture groups (`?<name>`) in your pattern to extract values and use t
 ```yaml
 - name: Check branch name
   id: branch-check
-  uses: Christian-Schou/branch-name-validation@v1.1.0
+  uses: Christian-Schou/branch-name-validation@v1
   with:
     branch_pattern: '^(?<type>feature|fix)/(?<ticket>[A-Z]+-\d+)-.+$'
 
@@ -170,7 +170,7 @@ Use `check_pr_title: 'true'` to apply the same pattern to the PR title. Both the
 
 ```yaml
 - name: Check branch name
-  uses: Christian-Schou/branch-name-validation@v1.1.0
+  uses: Christian-Schou/branch-name-validation@v1
   with:
     branch_pattern: 'feature|fix|chore'
     check_pr_title: 'true'
@@ -180,7 +180,7 @@ Use `check_pr_title: 'true'` to apply the same pattern to the PR title. Both the
 
 ```yaml
 - name: Check branch name
-  uses: Christian-Schou/branch-name-validation@v1.1.0
+  uses: Christian-Schou/branch-name-validation@v1
   with:
     branch_pattern: 'feature|fix|chore'
     min_length: '10'
@@ -191,7 +191,7 @@ Use `check_pr_title: 'true'` to apply the same pattern to the PR title. Both the
 
 ```yaml
 - name: Check branch name
-  uses: Christian-Schou/branch-name-validation@v1.1.0
+  uses: Christian-Schou/branch-name-validation@v1
   with:
     branch_pattern: '^(feature|fix)/.+'
     ignore_branch_pattern: |
@@ -236,7 +236,7 @@ You can override any comment template using the `invalid_comment_template`, `suc
 
 ```yaml
 - name: Check branch name
-  uses: Christian-Schou/branch-name-validation@v1.1.0
+  uses: Christian-Schou/branch-name-validation@v1
   with:
     branch_pattern: 'feature|fix'
     invalid_comment_template: |
