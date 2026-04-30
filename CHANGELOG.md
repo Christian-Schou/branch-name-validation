@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/Christian-Schou/branch-name-validation/compare/v1.3.0...v1.3.1) (2026-03-31)
+
+
+### Bug Fixes
+
+* **Readme:** Update branch-name-validation action version to v1 ([#11](https://github.com/Christian-Schou/branch-name-validation/issues/11)) ([3a76ee8](https://github.com/Christian-Schou/branch-name-validation/commit/3a76ee813879586a9fb4605d81cb2991a89d9adc))
+
 ## [1.3.0](https://github.com/Christian-Schou/branch-name-validation/compare/v1.2.0...v1.3.0) (2026-03-31)
 
 
